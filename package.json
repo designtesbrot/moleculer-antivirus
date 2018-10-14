@@ -1,6 +1,6 @@
 {
   "name": "moleculer-antivirus",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "An antivirus service for the moleculer framework",
   "main": "index.js",
   "repository": {
