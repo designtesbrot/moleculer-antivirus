@@ -1,0 +1,25 @@
+version: "2"
+
+services:
+  api:
+    build: ./../
+    entrypoint: ./node_modules/.bin/nodemon -L
+    command: examples/api.service.js
+    volumes:
+      - ./../:/usr/src
+    ports:
+      - 3000:3000
+  antivirus:
+    build: ./../
+    entrypoint: ./node_modules/.bin/nodemon -L
+    command: examples/antivirus.service.js
+    volumes:
+      - ./../:/usr/src
+      - ./clamd.remote.conf:/etc/clamd.conf
+      - ./tmp:/tmp
+  clamav:
+    image: mkodockx/docker-clamav
+    volumes:
+      - ./tmp:/tmp
+  nats:
+    image: nats
