@@ -18,13 +18,9 @@ utilizes the file streaming capabilities of the moleculer framework
 
 The following List details which features are implemented
 
-- Scan a file for malicious virus content
-
-## Roadmap
-
-The following List details which features are potentially implemented in the future
-
-- Scan a file at a remote location
+- Scan a stream for malicious virus content
+- Scan a local file for malicious virus content
+- Scan a file at a remote location for malicious virus content
 
 ## Requirements
 
@@ -61,9 +57,10 @@ broker.createService({
 
 // Start server
 broker.start().then(() => {
-    const data = fs.createReadStream('./suspicious.exe');
-    broker.call('antivirus.scan', data);
+    const stream = fs.createReadStream('./suspicious.exe');
+    broker.call('antivirus.scan', stream);
     broker.call('antivirus.scan', './this/suspicious.exe');
+    broker.call('antivirus.scan', {url: "http://www.eicar.org/download/eicar.com"});
 });
 ```
 
@@ -108,8 +105,7 @@ object of this action will contain the signature
 ### Parameters
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
-| `the` | `String`, `ReadableStream` | **required** | file to scan, can be a path or a
-        stream. If a path is given, this action will try to acquire a readable stream for the path |
+| `the` | `String`, `ReadableStream`, `Object` | **required** | file to scan, can be a path, a stream or an object. If a **path** is given, this action will try to acquire a readable stream for the path. If an **object** is given, a http(s) stream will be acquired and the response body will be scanned. For the location of the request, the url property will be used, while all other properties will be used as [node-fetch-options](https://www.npmjs.com/package/node-fetch#fetch-options) |
 
 ### Results
 **Type:** `PromiseLike.<({signature: (String|undefined)}|AntiVirusScanError)>`

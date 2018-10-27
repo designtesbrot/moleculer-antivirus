@@ -1,4 +1,14 @@
 -----------------------------
+<a name="1.1.0"></a>
+# 1.1.0 (2018-10-27)
+
+## New
+
+### Remote scan support
+The `scan` action now accepts not only paths and streams, but also plain objects. Plain objects will be used together with node-fetch to acquire a stream for a file available with http(s) and to scan 
+the response body stream. This allows for scanning files available remotely without persisting them anywhere on your system. 
+
+-----------------------------
 <a name="1.0.0"></a>
 # 1.0.0 (2018-10-27)
 

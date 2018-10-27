@@ -20,6 +20,12 @@ broker.createService({
 	settings: {
 		routes: [
 			{
+				path: "/scan",
+				aliases: {
+					"POST ": "antivirus.scan",
+				}
+			},
+			{
 				path: "/upload",
 				bodyParsers: {
 					json: false,

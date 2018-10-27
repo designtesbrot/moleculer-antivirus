@@ -31,6 +31,22 @@ describe("Service", () => {
 					});
 				});
 
+				it("resolves with the clamav scan of a remote file", () => {
+					let context = {
+						scan: jest.fn().mockReturnValue(Promise.resolve(true)),
+						metadata: {
+							transactionsCount: 1
+						},
+						Promise: require("bluebird"),
+					};
+					const params = {url: "http://www.eicar.org/download/eicar.com"};
+					return action.handler.bind(context)({params}).then(result => {
+						expect(context.scan.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(result).toEqual(true);
+						expect(context.metadata.transactionsCount).toEqual(1);
+					});
+				});
+
 				it("resolves with the clamav scan of a stream", () => {
 					let context = {
 						scan: jest.fn().mockReturnValue(Promise.resolve(true)),
@@ -47,7 +63,7 @@ describe("Service", () => {
 					});
 				});
 
-				it("rejects if the params are a plain object", () => {
+				it("rejects if the params are neither an object, stream nor file", () => {
 					let context = {
 						scan: jest.fn().mockReturnValue(Promise.resolve(true)),
 						metadata: {
@@ -55,7 +71,7 @@ describe("Service", () => {
 						},
 						Promise: require("bluebird"),
 					};
-					return action.handler.bind(context)({params: {foo: "bar"}}).catch(e => {
+					return action.handler.bind(context)({params: NaN}).catch(e => {
 						expect(e.constructor.name).toEqual("AntiVirusScanError");
 						expect(e.message).toEqual("Only paths or streams can be scanned");
 						expect(context.metadata.transactionsCount).toEqual(1);

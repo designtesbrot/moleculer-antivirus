@@ -1,6 +1,7 @@
 const fs = require("fs");
-const {defaultTo, clone} = require("ramda");
-const {isString} = require("ramda-adjunct");
+const {defaultTo, clone, omit, prop} = require("ramda");
+const {isString, isPlainObj} = require("ramda-adjunct");
+const fetch = require("node-fetch");
 const {AntiVirusInitializationError, AntiVirusScanError, AntiVirusPingError, AntiVirusVersionError} = require(
 	"./errors");
 const {isReadableStream} = require("./helpers");
@@ -122,8 +123,7 @@ module.exports = {
 		 *
 		 * @actions
 		 *
-		 * @param {String|ReadableStream} the file to scan, can be a path or a
-		 *         stream. If a path is given, this action will try to acquire a readable stream for the path
+		 * @param {String|ReadableStream|{url: {string}}} the file to scan, can be a path, a stream or an object. If a **path** is given, this action will try to acquire a readable stream for the path. If an **object** is given, a http(s) stream will be acquired and the response body will be scanned. For the location of the request, the url property will be used, while all other properties will be used as [node-fetch-options](https://www.npmjs.com/package/node-fetch#fetch-options)
 		 *
 		 * @returns {PromiseLike<{signature: String|undefined}|AntiVirusScanError>}
 		 */
@@ -136,6 +136,8 @@ module.exports = {
 				// increment the transaction counter
 				this.metadata.transactionsCount += 1;
 				return this.Promise.resolve(ctx.params).
+					// if a plain object is given, create a ReadStream using node-fetch
+					then(subject => isPlainObj(subject) ? fetch(subject.url, omit(["url"], subject)).then(prop("body")) : subject).
 					// if a string is given, create a ReadStream for the file at the strings location
 					then(subject => isString(subject) ? fs.createReadStream(subject) : subject).
 					// scan the stream
