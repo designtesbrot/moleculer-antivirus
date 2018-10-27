@@ -1,4 +1,5 @@
 [![Moleculer logo](http://moleculer.services/images/banner.png)](https://github.com/moleculerjs/moleculer)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdesigntesbrot%2Fmoleculer-antivirus.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdesigntesbrot%2Fmoleculer-antivirus?ref=badge_shield)
 
 [![Build Status](https://travis-ci.com/designtesbrot/moleculer-antivirus.svg?branch=master)](https://travis-ci.com/designtesbrot/moleculer-antivirus)
 [![Coverage Status](https://coveralls.io/repos/github/designtesbrot/moleculer-antivirus/badge.svg?branch=master)](https://coveralls.io/github/designtesbrot/moleculer-antivirus?branch=master)
@@ -276,3 +277,6 @@ $ docker-compose up
 
 ## License
 moleculer-antivirus is available under the [MIT license](https://tldrlegal.com/license/mit-license).
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fdesigntesbrot%2Fmoleculer-antivirus.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fdesigntesbrot%2Fmoleculer-antivirus?ref=badge_large)
