@@ -14,6 +14,9 @@ let broker = new ServiceBroker({
 // Load services
 broker.createService({
 	mixins: ApiGatewayService,
+	metadata: {
+		transactionsCount: 0
+	},
 	settings: {
 		routes: [
 			{
@@ -24,6 +27,7 @@ broker.createService({
 				},
 				aliases: {
 					"POST /"(req, res) {
+						this.metadata.transactionsCount += 1;
 						const form = new multiparty.Form();
 						form.on("part", part => {
 
@@ -35,10 +39,18 @@ broker.createService({
 								catch(err => {
 									this.logger.error("File scan error!", err);
 									this.sendError(req, res, err);
+								}).finally(() => {
+									this.metadata.transactionsCount -= 1;
 								});
 						});
 
+						form.on("error", e => {
+							this.logger.error('upload error', e);
+							this.metadata.transactionsCount -= 1;
+						});
+
 						form.parse(req);
+
 					},
 
 				},
@@ -46,6 +58,12 @@ broker.createService({
 			},
 		],
 	},
+});
+
+process.once('SIGUSR2', function () {
+	broker.stop().then(() => {
+		process.kill(process.pid, 'SIGUSR2');
+	});
 });
 
 // Start server

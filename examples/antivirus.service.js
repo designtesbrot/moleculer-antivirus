@@ -1,4 +1,3 @@
-
 "use strict";
 
 const {ServiceBroker} = require("moleculer");
@@ -11,7 +10,18 @@ let broker = new ServiceBroker({
 });
 
 // Load services
-broker.createService({mixins: AntiVirusService});
+broker.createService({
+	mixins: AntiVirusService,
+	settings: {
+		clamdHost: "clamav"
+	}
+});
+
+process.once('SIGUSR2', function () {
+	broker.stop().then(() => {
+		process.kill(process.pid, 'SIGUSR2');
+	});
+});
 
 // Start server
 broker.start().then(() => broker.repl());

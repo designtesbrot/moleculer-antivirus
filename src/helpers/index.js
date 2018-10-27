@@ -1,3 +1,3 @@
 module.exports = {
-	isReadableStream: require('./isReadableStream')
+	isReadableStream: require("./isReadableStream")
 };

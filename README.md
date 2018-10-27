@@ -19,15 +19,20 @@ The following List details which features are implemented
 
 - Scan a file for malicious virus content
 
+## Roadmap
+
+The following List details which features are potentially implemented in the future
+
+- Scan a file at a remote location
+
 ## Requirements
 
-This service relies on [clamscan](https://www.npmjs.com/package/clamscan) which itself relies on clamav being installed.
-This repository includes a Dockerfile which installes clamav. The examples folder includes a docker-compose file which
-includes launching clamd as a separate connected container and making use of a shared mount and tcp connectivity between 
-the clamav deamon and client. 
-
-## Compability
-This service is not expected to work on a windows host.
+This service relies on [clamav.js](https://www.npmjs.com/package/clamav.js) which itself relies on a clam daemon available to connect to in the network.
+ Files to be scanned are streamed to the clam daemon being installed. If the `scan` action is invoked with a string as an argument,
+ it is assumed that the string is path to a valid location and a `ReadStream` from that location is created. If you plan to scan large files
+ (> 100M), make sure to properly configure the clam daemon for accepting bigger files on the stream interface. This repository includes a Dockerfile which installes clamav. The examples folder includes a docker-compose file which
+includes an example, which itself includes a docker-compose file connecting to the antivirus service to a daemon configured for larger
+stream payloads. A configuration example for the clam daemon is included in the examples folder.
 
 ## Install
 
@@ -70,21 +75,10 @@ EICAR signatures for testing are available [here](http://www.eicar.org/85-0-Down
 <!-- AUTO-CONTENT-START:SETTINGS -->
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
-| `temporaryStorage` | `String` | `null` | In case you pass a redable stream, we have to store the stream somewhere. This path is to location of this storage. |
-| `scan_log` | `String` | `null` | Path to a writeable log file to write scan results into |
-| `debug_mode` | `Boolean` | `null` | Whether or not to log info/debug/error msgs to the console |
-| `clamscan` | `Object` | `null` | clamdcan configuration |
-| `clamscan.path` | `String` | `null` | Path to the clamscan binary |
-| `clamscan.db` | `String` | `null` | Path to a custom virus definition database |
-| `clamscan.scan_archives` | `Boolean` | `null` | If true, scan archives (ex. zip, rar, tar, dmg, iso, etc...) |
-| `clamscan.active` | `Boolean` | `null` | If true, this service will consider using the clamscan binary |
-| `clamdscan` | `Object` | `null` | clamdscan configuration |
-| `clamdscan.path` | `String` | `null` | Path to the clamdscan binary |
-| `clamdscan.config_file` | `String` | `null` | Path to the clamdscan configuration |
-| `clamdscan.multiscan` | `Boolean` | `null` | Scan using all available cores! Yay! |
-| `clamdscan.reload_db` | `Boolean` | `null` | If true, will re-load the DB on every call (slow) |
-| `clamdscan.active` | `Boolean` | `null` | If true, this service will consider using the clamdscan binary |
-| `preference` | `String` | `null` | Which scan client to prefer (clamdscan or clamscan) |
+| `clamdPort` | `Number` | `null` | The port that clamd is listening on |
+| `clamdHost` | `String` | `null` | The ip that clamd is listening on |
+| `clamdTimeout` | `Number` | `null` | The timeout when communicating with clamd for pinging and acquireing the clamd version |
+| `clamdHealthCheckInterval` | `Number` | `null` | This service will perform a periodic healthcheck of clamd. Use this setting to configure the inverval in which the healthcheck is performed. Set to `0` to turn healthcheks of |
 
 <!-- AUTO-CONTENT-END:SETTINGS -->
 
@@ -105,18 +99,21 @@ EICAR signatures for testing are available [here](http://www.eicar.org/85-0-Down
 <!-- AUTO-CONTENT-START:ACTIONS -->
 ## `scan` 
 
-Scans a given file or stream
+Scans a given file or stream.
+Not that this action does not reject, if a virus signature was detected! It will only reject if an error was
+encoutered during the scan. If a signature was found (and the file therefore is malicious) the resolved
+object of this action will contain the signature
 
 ### Parameters
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
 | `the` | `String`, `ReadableStream` | **required** | file to scan, can be a path or a
-        stream |
+        stream. If a path is given, this action will try to acquire a readable stream for the path |
 
 ### Results
-**Type:** `Object`
+**Type:** `PromiseLike.<({signature: (String|undefined)}|AntiVirusScanError)>`
 
-The Scan result.
+
 
 
 <!-- AUTO-CONTENT-END:ACTIONS -->
@@ -160,40 +157,72 @@ _<sup>Since: {{this}}</sup>_
 # Methods
 
 <!-- AUTO-CONTENT-START:METHODS -->
-## `scanFile` 
+## `ping` 
 
-Scan a file for a virus
-
-### Parameters
-| Property | Type | Default | Description |
-| -------- | ---- | ------- | ----------- |
-| `path` | `String` | **required** | The stream or file to scan |
-
-### Results
-**Type:** `Promise.<(AntiVirusScanError|{file: {String}, infected: {Boolean}})>`
-
-
-
-
-## `persistStream` 
-
-Persists a stream to the file system before scanning it (clamav has
-no interface for nodejs streams) The location can be configured via
-the `temporaryStorage` setting. In case of clamdscan being used, it
-is your responsiblility that the temporary storage location is
-available to the clamd host. Check the examples folder, where docker
-mounts are used.
+Pings the configured clamd backend
 
 ### Parameters
 | Property | Type | Default | Description |
 | -------- | ---- | ------- | ----------- |
-| `data` | `ReadableStream` | **required** | the stream to persist |
+| `port` | `Number` | **required** | The port clamd is listening on. Defaults to `settings.clamdPort` |
+| `host` | `string` | **required** | The host clamd is listening on. Defaults to `settings.clamdHost` |
+| `timeout` | `Number` | **required** | The timeout for this operation. Defaults to `settings.clamdTimeout` |
 
 ### Results
-**Type:** `PromiseLike.<(String|AntiVirusScanError)>`
+**Type:** `PromiseLike.<(undefined|AntiVirusPingError)>`
 
-resolved promise
-        contains the path of the file.
+
+
+
+## `clamdVersion` 
+
+Acquires the version of the configured clamd backend
+
+### Parameters
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `port` | `Number` | **required** | The port clamd is listening on. Defaults to `settings.clamdPort` |
+| `host` | `string` | **required** | The host clamd is listening on. Defaults to `settings.clamdHost` |
+| `timeout` | `Number` | **required** | The timeout for this operation. Defaults to `settings.clamdTimeout` |
+
+### Results
+**Type:** `PromiseLike.<(String|AntiVirusVersionError)>`
+
+
+
+
+## `createScanner` 
+
+Creates and returns a new clamd scanner
+
+### Parameters
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `port` | `Number` | **required** | The port clamd is listening on. Defaults to `settings.clamdPort` |
+| `host` | `string` | **required** | The host clamd is listening on. Defaults to `settings.clamdHost` |
+
+### Results
+**Type:** `Object`
+
+
+
+
+## `scan` 
+
+Scan a stream for malicious content. Resolves with an object. If a virus signature was found in the
+stream, the `signature` property of the resolve object contains the name of the signature found.
+If the property is not undefined, you should consider the scanned stream malicious.
+This method rejects when an error was encountered during the scan, not when the scan found a signature!
+
+### Parameters
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `stream` | `ReadableStream` | **required** |  |
+
+### Results
+**Type:** `PromiseLike.<({signature: (String|undefined)}|AntiVirusScanError)>`
+
+
 
 
 <!-- AUTO-CONTENT-END:METHODS -->

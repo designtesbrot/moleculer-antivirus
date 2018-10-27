@@ -1,12 +1,13 @@
 const Service = require("service");
 describe("Service", () => {
 	describe("created", () => {
-		it("creates a vault instance", () => {
+		it("creates a scanner instance", () => {
 			let context = {
-				settings: Service.settings
+				settings: Service.settings,
+				createScanner: () => Object.assign({foo: "bar"})
 			};
 			Service.created.bind(context)();
-			expect(context.scanner.constructor.name).toEqual("NodeClam");
+			expect(context.scanner).toEqual({foo: "bar"});
 		});
 	});
 });

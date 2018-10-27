@@ -1,9 +1,8 @@
-const Clamscan = require("clamscan");
 const fs = require("fs");
-const Promise = require("bluebird");
+const {defaultTo, clone} = require("ramda");
 const {isString} = require("ramda-adjunct");
-const uuid = require("uuid/v4");
-const {AntiVirusInitializationError, AntiVirusScanError} = require("./errors");
+const {AntiVirusInitializationError, AntiVirusScanError, AntiVirusPingError, AntiVirusVersionError} = require(
+	"./errors");
 const {isReadableStream} = require("./helpers");
 /**
  * Service mixin for scanning files with clamav
@@ -17,113 +16,116 @@ module.exports = {
 
 	// Default settings
 	settings: {
-		/** @type {String?} In case you pass a redable stream, we have to store the stream somewhere. This path is to location of this storage. */
-		temporaryStorage: "/tmp",
-		/** @type {String?} Path to a writeable log file to write scan results into */
-		scan_log: null,
-		/** @type {Boolean?} Whether or not to log info/debug/error msgs to the console */
-		debug_mode: false,
-		/** @type {Object?} clamdcan configuration */
-		clamscan: {
-			/** @type {String?} Path to the clamscan binary */
-			path: "/usr/bin/clamscan",
-			/** @type {String?} Path to a custom virus definition database */
-			db: null,
-			/** @type {Boolean?} If true, scan archives (ex. zip, rar, tar, dmg, iso, etc...) */
-			scan_archives: true,
-			/** @type {Boolean?} If true, this service will consider using the clamscan binary */
-			active: true,
-		},
-		/** @type {Object?} clamdscan configuration */
-		clamdscan: {
-			/** @type {String?} Path to the clamdscan binary */
-			path: "/usr/bin/clamdscan",
-			/** @type {String?} Path to the clamdscan configuration */
-			config_file: "/etc/clamd.conf",
-			/** @type {Boolean?} Scan using all available cores! Yay! */
-			multiscan: true,
-			/** @type {Boolean?} If true, will re-load the DB on every call (slow) */
-			reload_db: false,
-			/** @type {Boolean?} If true, this service will consider using the clamdscan binary */
-			active: true,
-		},
-		/** @type {String?} Which scan client to prefer (clamdscan or clamscan) */
-		preference: "clamdscan",
+		/** @type {Number?} The port that clamd is listening on */
+		clamdPort: 3310,
+		/** @type {String?} The ip that clamd is listening on */
+		clamdHost: "127.0.0.1",
+		/** @type {Number?} The timeout when communicating with clamd for pinging and acquireing the clamd version */
+		clamdTimeout: 1000,
+		/** @type {Number?} This service will perform a periodic healthcheck of clamd. Use this setting to configure the inverval in which the healthcheck is performed. Set to `0` to turn healthcheks of */
+		clamdHealthCheckInterval: 5000,
+	},
+
+	metadata: {
+		/** @type {Number} The number of scans that are currently ongoing */
+		transactionsCount: 0,
 	},
 
 	methods: {
 		/**
-		 * Scan a file for a virus
+		 * Pings the configured clamd backend
 		 *
 		 * @methods
 		 *
-		 * @param {String} path - The stream or file to scan
-		 * @returns {Promise.<AntiVirusScanError|{file: {String}, infected:
-		 *         {Boolean}}>}
+		 * @param {Number} port - The port clamd is listening on. Defaults to `settings.clamdPort`
+		 * @param {string} host - The host clamd is listening on. Defaults to `settings.clamdHost`
+		 * @param {Number} timeout - The timeout for this operation. Defaults to `settings.clamdTimeout`
+		 *
+		 * @returns {PromiseLike<undefined|AntiVirusPingError>}
 		 */
-		scanFile(path) {
-			return new this.Promise((res, rej) => {
-				try {
-					this.scanner.is_infected(path, (err, file, is_infected) => {
-						if (err) {
-							rej(new AntiVirusScanError(err.message));
-						}
-						else {
-							res({
-								file,
-								infected: is_infected,
-							});
-						}
-					});
-				}
-				catch (e) {
-					rej(new AntiVirusScanError(e.message));
-				}
-			});
+		ping({port, host, timeout} = {}) {
+			return (this.Promise.promisify(require("clamav.js").ping, {context: require("clamav.js")}))(
+				defaultTo(this.settings.clamdPort, port),
+				defaultTo(this.settings.clamdHost, host),
+				defaultTo(this.settings.clamdTimeout, timeout)
+			).catch(e => {throw new AntiVirusPingError(e.message);});
 		},
 		/**
-		 * Persists a stream to the file system before scanning it (clamav has
-		 * no interface for nodejs streams) The location can be configured via
-		 * the `temporaryStorage` setting. In case of clamdscan being used, it
-		 * is your responsiblility that the temporary storage location is
-		 * available to the clamd host. Check the examples folder, where docker
-		 * mounts are used.
+		 * Acquires the version of the configured clamd backend
 		 *
 		 * @methods
 		 *
-		 * @param {ReadableStream} data - the stream to persist
+		 * @param {Number} port - The port clamd is listening on. Defaults to `settings.clamdPort`
+		 * @param {string} host - The host clamd is listening on. Defaults to `settings.clamdHost`
+		 * @param {Number} timeout - The timeout for this operation. Defaults to `settings.clamdTimeout`
 		 *
-		 * @returns {PromiseLike<String|AntiVirusScanError>} resolved promise
-		 *         contains the path of the file.
+		 * @returns {PromiseLike<String|AntiVirusVersionError>}
 		 */
-		persistStream(data) {
-			return this.Promise.resolve(data).
-				then(stream => {
-					const streamTo = `${this.settings.temporaryStorage}/${uuid()}`;
-					return new this.Promise((res, rej) => {
-						stream.pipe(fs.createWriteStream(streamTo)).
-							on("finish", () => res(streamTo)).
-							on("error",
-								e => rej(new AntiVirusScanError(e.message)));
-					});
-
+		clamdVersion({port, host, timeout} = {}) {
+			return (this.Promise.promisify(require("clamav.js").version, {context: require("clamav.js")}))(
+				defaultTo(this.settings.clamdPort, port),
+				defaultTo(this.settings.clamdHost, host),
+				defaultTo(this.settings.clamdTimeout, timeout)
+			).catch(e => {throw new AntiVirusVersionError(e.message);});
+		},
+		/**
+		 * Creates and returns a new clamd scanner
+		 *
+		 * @methods
+		 *
+		 * @param {Number} port - The port clamd is listening on. Defaults to `settings.clamdPort`
+		 * @param {string} host - The host clamd is listening on. Defaults to `settings.clamdHost`
+		 * @returns {{port, host, scan}}
+		 */
+		createScanner({port, host} = {}) {
+			return require("clamav.js").createScanner(
+				defaultTo(this.settings.clamdPort, port),
+				defaultTo(this.settings.clamdHost, host)
+			);
+		},
+		/**
+		 * Scan a stream for malicious content. Resolves with an object. If a virus signature was found in the
+		 * stream, the `signature` property of the resolve object contains the name of the signature found.
+		 * If the property is not undefined, you should consider the scanned stream malicious.
+		 * This method rejects when an error was encountered during the scan, not when the scan found a signature!
+		 *
+		 * @methods
+		 *
+		 * @param {ReadableStream} stream
+		 * @returns {PromiseLike<{signature: String|undefined}|AntiVirusScanError>}
+		 */
+		scan(stream) {
+			return new this.Promise((res, rej) => {
+				this.scanner.scan(stream, (err, obj, signature) => {
+					if (err) {
+						rej(err);
+					} else {
+						res(clone({signature}));
+					}
+				});
+			}).
+				catch(e => {
+					throw new AntiVirusScanError(e.message);
 				});
 		},
 	},
 
 	/**
-	 * Interact with the Vault
+	 * Interact with the Clamd Backend
 	 */
 	actions: {
 		/**
-		 * Scans a given file or stream
+		 * Scans a given file or stream.
+		 * Not that this action does not reject, if a virus signature was detected! It will only reject if an error was
+		 * encoutered during the scan. If a signature was found (and the file therefore is malicious) the resolved
+		 * object of this action will contain the signature
 		 *
 		 * @actions
 		 *
 		 * @param {String|ReadableStream} the file to scan, can be a path or a
-		 *         stream
+		 *         stream. If a path is given, this action will try to acquire a readable stream for the path
 		 *
-		 * @returns {Object} The Scan result.
+		 * @returns {PromiseLike<{signature: String|undefined}|AntiVirusScanError>}
 		 */
 		scan: {
 			params: [
@@ -131,34 +133,65 @@ module.exports = {
 				{type: "object"},
 			],
 			handler(ctx) {
+				// increment the transaction counter
+				this.metadata.transactionsCount += 1;
 				return this.Promise.resolve(ctx.params).
-					// ensure that streams are writting to the temporary folder
-					then(subject => isReadableStream(subject)
-						? this.persistStream(subject)
-						: subject).
-					// scan the file if it is a string
+					// if a string is given, create a ReadStream for the file at the strings location
+					then(subject => isString(subject) ? fs.createReadStream(subject) : subject).
+					// scan the stream
 					then(subject => {
-						if (isString(subject)) {
-							return this.scanFile(subject);
+						if (isReadableStream(subject)) {
+							return this.scan(subject);
+						} else {
+							throw new AntiVirusScanError("Only paths or streams can be scanned");
 						}
-						else {
-							throw new AntiVirusScanError(
-								"Only paths or streams can be scanned");
-						}
-					});
+					})
+					// decrement the transaction counter
+					.finally(() => this.metadata.transactionsCount -= 1);
 			},
 		},
 	},
 
 	/**
-	 * Service created lifecycle event handler
+	 * Service created lifecycle event handler.
+	 * Constructs a new scanner entity
 	 */
 	created() {
-		try {
-			this.scanner = Clamscan(this.settings);
-		}
-		catch (e) {
-			throw new AntiVirusInitializationError(e.message);
-		}
+		this.scanner = this.createScanner();
 	},
+	/**
+	 * Service started lifecycle event handler. Resolves when:
+	 * * ping and version acquisition of clamd backend has been successful
+	 * * a healthCheck has been registered, given clamdHealthCheckInterval > 0
+	 * @returns {PromiseLike<undefined|AntiVirusInitializationError>}
+	 */
+	started() {
+		/* istanbul ignore next */
+		return this.Promise.resolve().
+			then(() =>
+				this.ping().then(() =>
+					this.clamdVersion()
+				)
+			).
+			then(version => this.logger.info("Connected to clamd ", version)).
+			then(() => {
+				this.settings.clamdHealthCheckInterval ?
+					this.metadata.healthCheckInterval = setInterval(
+						() => this.ping().catch(e => this.logger.error("Clamd backend can not be reached", e)),
+						this.settings.clamdHealthCheckInterval)
+					: undefined;
+				return undefined;
+			}).
+			catch(e => {
+				throw new AntiVirusInitializationError(e.message);
+			});
+	},
+	/**
+	 * Service stopped lifecycle event handler.
+	 * Removes the healthCheckInterval
+	 */
+	stopped() {
+		this.metadata.healthCheckInterval && clearInterval(this.metadata.healthCheckInterval);
+	},
+
 };

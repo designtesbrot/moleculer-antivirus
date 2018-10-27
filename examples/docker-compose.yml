@@ -15,11 +15,9 @@ services:
     command: examples/antivirus.service.js
     volumes:
       - ./../:/usr/src
-      - ./clamd.remote.conf:/etc/clamd.conf
-      - ./tmp:/tmp
   clamav:
     image: mkodockx/docker-clamav
     volumes:
-      - ./tmp:/tmp
+      - ./clamd.conf:/etc/clamav/clamd.conf
   nats:
     image: nats

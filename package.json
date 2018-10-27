@@ -1,6 +1,6 @@
 {
   "name": "moleculer-antivirus",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "An antivirus service for the moleculer framework",
   "main": "index.js",
   "repository": {
@@ -13,7 +13,7 @@
     "dev": "yarn install && nodemon examples/index.js",
     "demo": "yarn install && node examples/index.js",
     "ci": "yarn install && jest --watch",
-    "test": "yarn install && jest --coverage",
+    "test": "yarn install && jest --coverage --detectOpenHandles",
     "lint": "yarn install && eslint --ext=.js src",
     "deps": "yarn install && yarn-check -u",
     "postdeps": "yarn test",
@@ -46,7 +46,7 @@
     "moleculer": ">= 0.13.0"
   },
   "dependencies": {
-    "clamscan": "^0.8.4",
+    "clamav.js": "^0.12.0",
     "ramda": "^0.25.0",
     "ramda-adjunct": "^2.10.0"
   },

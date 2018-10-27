@@ -724,11 +724,9 @@ circular-json@^0.3.1:
   version "0.3.3"
   resolved "https://registry.yarnpkg.com/circular-json/-/circular-json-0.3.3.tgz#815c99ea84f6809529d2f45791bdf82711352d66"
 
-clamscan@^0.8.4:
-  version "0.8.4"
-  resolved "https://registry.yarnpkg.com/clamscan/-/clamscan-0.8.4.tgz#b5ec92bd7839f710e8820b92d19b649e22cb790e"
-  dependencies:
-    underscore "1.5.x"
+clamav.js@^0.12.0:
+  version "0.12.0"
+  resolved "https://registry.yarnpkg.com/clamav.js/-/clamav.js-0.12.0.tgz#f654ebd2d10c707cb5f7d4453885acd88d2731f7"
 
 class-utils@^0.3.5:
   version "0.3.6"
@@ -4845,10 +4843,6 @@ underscore-contrib@~0.3.0:
   resolved "https://registry.yarnpkg.com/underscore-contrib/-/underscore-contrib-0.3.0.tgz#665b66c24783f8fa2b18c9f8cbb0e2c7d48c26c7"
   dependencies:
     underscore "1.6.0"
-
-underscore@1.5.x:
-  version "1.5.2"
-  resolved "https://registry.yarnpkg.com/underscore/-/underscore-1.5.2.tgz#1335c5e4f5e6d33bbb4b006ba8c86a00f556de08"
 
 underscore@1.6.0, underscore@~1.6.0:
   version "1.6.0"

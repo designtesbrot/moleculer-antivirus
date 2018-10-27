@@ -1,7 +1,7 @@
 FROM node:6-alpine
 
-# Install git for jest watcher and clamav for virus scanning
-RUN apk add --update --no-cache git clamav
+# Install git for jest watcher for virus scanning
+RUN apk add --update --no-cache git
 
 # Copy over all Source files
 COPY . /usr/src
