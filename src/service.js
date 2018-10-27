@@ -1,9 +1,17 @@
 const fs = require("fs");
-const {defaultTo, clone, omit, prop} = require("ramda");
+const {PassThrough} = require("stream");
+const {defaultTo, clone, omit, prop, mergeAll} = require("ramda");
 const {isString, isPlainObj} = require("ramda-adjunct");
 const fetch = require("node-fetch");
-const {AntiVirusInitializationError, AntiVirusScanError, AntiVirusPingError, AntiVirusVersionError} = require(
-	"./errors");
+const fileType = require("file-type");
+const {
+	AntiVirusInitializationError,
+	AntiVirusScanError,
+	AntiVirusPingError,
+	AntiVirusVersionError,
+	AntiVirusMimeError,
+	AntiVirusSizeError
+} = require("./errors");
 const {isReadableStream} = require("./helpers");
 /**
  * Service mixin for scanning files with clamav
@@ -109,6 +117,38 @@ module.exports = {
 					throw new AntiVirusScanError(e.message);
 				});
 		},
+		/**
+		 * Obtain the mime type of a stream
+		 *
+		 * @methods
+		 *
+		 * @param {ReadableStream} stream
+		 * @returns {PromiseLike<{ext: String, mime: String}|AntiVirusMimeError>}
+		 */
+		mime(stream) {
+			return new this.Promise((res, rej) => {
+				stream.once("data", chunk => {
+					res(defaultTo({}, fileType(chunk)));
+				});
+				stream.on("error", e => rej(new AntiVirusMimeError(e.message)));
+			});
+		},
+		/**
+		 * Obtain the size of a stream in bytes
+		 *
+		 * @methods
+		 *
+		 * @param {ReadableStream} stream
+		 * @returns {PromiseLike<{size: Number}|AntiVirusSizeError>}
+		 */
+		size(stream) {
+			return new this.Promise((res, rej) => {
+				let size = 0;
+				stream.on("data", chunk => size += chunk.length);
+				stream.on("finish", () => res({size}));
+				stream.on("error", e => rej(new AntiVirusSizeError(e.message)));
+			});
+		}
 	},
 
 	/**
@@ -119,13 +159,18 @@ module.exports = {
 		 * Scans a given file or stream.
 		 * Not that this action does not reject, if a virus signature was detected! It will only reject if an error was
 		 * encoutered during the scan. If a signature was found (and the file therefore is malicious) the resolved
-		 * object of this action will contain the signature
+		 * object of this action will contain the signature.
 		 *
 		 * @actions
 		 *
-		 * @param {String|ReadableStream|{url: {string}}} the file to scan, can be a path, a stream or an object. If a **path** is given, this action will try to acquire a readable stream for the path. If an **object** is given, a http(s) stream will be acquired and the response body will be scanned. For the location of the request, the url property will be used, while all other properties will be used as [node-fetch-options](https://www.npmjs.com/package/node-fetch#fetch-options)
+		 * @param {String|ReadableStream|{url: {string}}} the file to scan, can be a path, a stream or an object. If a
+		 *         **path** is given, this action will try to acquire a readable stream for the path. If an **object**
+		 *         is given, a http(s) stream will be acquired and the response body will be scanned. For the location
+		 *         of the request, the url property will be used, while all other properties will be used as
+		 *         [node-fetch-options](https://www.npmjs.com/package/node-fetch#fetch-options)
 		 *
-		 * @returns {PromiseLike<{signature: String|undefined}|AntiVirusScanError>}
+		 * @returns {PromiseLike<{signature: String|undefined, size: Number|undefined, mime: String|undefined, ext:
+		 *         String|undefined}|AntiVirusScanError>}
 		 */
 		scan: {
 			params: [
@@ -137,17 +182,23 @@ module.exports = {
 				this.metadata.transactionsCount += 1;
 				return this.Promise.resolve(ctx.params).
 					// if a plain object is given, create a ReadStream using node-fetch
-					then(subject => isPlainObj(subject) ? fetch(subject.url, omit(["url"], subject)).then(prop("body")) : subject).
+					then(subject => isPlainObj(subject)
+						? fetch(subject.url, omit(["url"], subject)).then(prop("body"))
+						: subject).
 					// if a string is given, create a ReadStream for the file at the strings location
 					then(subject => isString(subject) ? fs.createReadStream(subject) : subject).
 					// scan the stream
 					then(subject => {
 						if (isReadableStream(subject)) {
-							return this.scan(subject);
+							return Promise.all([
+								this.mime(subject.pipe(new PassThrough())),
+								this.scan(subject.pipe(new PassThrough())),
+								this.size(subject.pipe(new PassThrough()))
+							]);
 						} else {
 							throw new AntiVirusScanError("Only paths or streams can be scanned");
 						}
-					})
+					}).then(mergeAll)
 					// decrement the transaction counter
 					.finally(() => this.metadata.transactionsCount -= 1);
 			},

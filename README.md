@@ -21,6 +21,8 @@ The following List details which features are implemented
 - Scan a stream for malicious virus content
 - Scan a local file for malicious virus content
 - Scan a file at a remote location for malicious virus content
+- Detect the mime type of a file
+- Detect the size of a file
 
 ## Requirements
 
@@ -100,7 +102,7 @@ EICAR signatures for testing are available [here](http://www.eicar.org/85-0-Down
 Scans a given file or stream.
 Not that this action does not reject, if a virus signature was detected! It will only reject if an error was
 encoutered during the scan. If a signature was found (and the file therefore is malicious) the resolved
-object of this action will contain the signature
+object of this action will contain the signature.
 
 ### Parameters
 | Property | Type | Default | Description |
@@ -108,7 +110,7 @@ object of this action will contain the signature
 | `the` | `String`, `ReadableStream`, `Object` | **required** | file to scan, can be a path, a stream or an object. If a **path** is given, this action will try to acquire a readable stream for the path. If an **object** is given, a http(s) stream will be acquired and the response body will be scanned. For the location of the request, the url property will be used, while all other properties will be used as [node-fetch-options](https://www.npmjs.com/package/node-fetch#fetch-options) |
 
 ### Results
-**Type:** `PromiseLike.<({signature: (String|undefined)}|AntiVirusScanError)>`
+**Type:** `PromiseLike.<({signature: (String|undefined), size: (Number|undefined), mime: (String|undefined), ext: (String|undefined)}|AntiVirusScanError)>`
 
 
 
@@ -218,6 +220,36 @@ This method rejects when an error was encountered during the scan, not when the 
 
 ### Results
 **Type:** `PromiseLike.<({signature: (String|undefined)}|AntiVirusScanError)>`
+
+
+
+
+## `mime` 
+
+Obtain the mime type of a stream
+
+### Parameters
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `stream` | `ReadableStream` | **required** |  |
+
+### Results
+**Type:** `PromiseLike.<({ext: String, mime: String}|AntiVirusMimeError)>`
+
+
+
+
+## `size` 
+
+Obtain the size of a stream in bytes
+
+### Parameters
+| Property | Type | Default | Description |
+| -------- | ---- | ------- | ----------- |
+| `stream` | `ReadableStream` | **required** |  |
+
+### Results
+**Type:** `PromiseLike.<({size: Number}|AntiVirusSizeError)>`
 
 
 

@@ -1,4 +1,16 @@
 -----------------------------
+<a name="1.2.0"></a>
+# 1.2.0 (2018-10-27)
+
+## New
+
+### MimeType Detection
+The `scan` action replicates the streams and performs mimetype detection on it. If detectable, the resolved object will include `ext` and `mime` properties.
+
+### Size Detection
+The `scan` action replicates the streams and performs size detection on it. If detectable, the resolved object will include a `size` property which contains the total number of bytes in the stream.
+
+-----------------------------
 <a name="1.1.0"></a>
 # 1.1.0 (2018-10-27)
 

@@ -17,7 +17,9 @@ describe("Service", () => {
 			describe("handler", () => {
 				it("resolves with the clamav scan of a file path", () => {
 					let context = {
-						scan: jest.fn().mockReturnValue(Promise.resolve(true)),
+						scan: jest.fn().mockReturnValue(Promise.resolve({signature: false})),
+						size: jest.fn().mockReturnValue(Promise.resolve({size: 13})),
+						mime: jest.fn().mockReturnValue(Promise.resolve({mimetype: "image/png", extension: "png"})),
 						metadata: {
 							transactionsCount: 1
 						},
@@ -25,15 +27,19 @@ describe("Service", () => {
 					};
 					const params = __filename;
 					return action.handler.bind(context)({params}).then(result => {
-						expect(context.scan.mock.calls[0][0].constructor.name).toEqual("ReadStream");
-						expect(result).toEqual(true);
+						expect(context.scan.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(context.size.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(context.mime.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(result).toEqual({signature: false, size: 13, mimetype: "image/png", extension: "png"});
 						expect(context.metadata.transactionsCount).toEqual(1);
 					});
 				});
 
 				it("resolves with the clamav scan of a remote file", () => {
 					let context = {
-						scan: jest.fn().mockReturnValue(Promise.resolve(true)),
+						scan: jest.fn().mockReturnValue(Promise.resolve({signature: false})),
+						size: jest.fn().mockReturnValue(Promise.resolve({size: 13})),
+						mime: jest.fn().mockReturnValue(Promise.resolve({mimetype: "image/png", extension: "png"})),
 						metadata: {
 							transactionsCount: 1
 						},
@@ -42,14 +48,18 @@ describe("Service", () => {
 					const params = {url: "http://www.eicar.org/download/eicar.com"};
 					return action.handler.bind(context)({params}).then(result => {
 						expect(context.scan.mock.calls[0][0].constructor.name).toEqual("PassThrough");
-						expect(result).toEqual(true);
+						expect(context.size.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(context.mime.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(result).toEqual({signature: false, size: 13, mimetype: "image/png", extension: "png"});
 						expect(context.metadata.transactionsCount).toEqual(1);
 					});
 				});
 
 				it("resolves with the clamav scan of a stream", () => {
 					let context = {
-						scan: jest.fn().mockReturnValue(Promise.resolve(true)),
+						scan: jest.fn().mockReturnValue(Promise.resolve({signature: false})),
+						size: jest.fn().mockReturnValue(Promise.resolve({size: 13})),
+						mime: jest.fn().mockReturnValue(Promise.resolve({mimetype: "image/png", extension: "png"})),
 						metadata: {
 							transactionsCount: 1
 						},
@@ -57,8 +67,10 @@ describe("Service", () => {
 					};
 					const params = fs.createReadStream(__filename);
 					return action.handler.bind(context)({params}).then(result => {
-						expect(context.scan.mock.calls[0][0].constructor.name).toEqual("ReadStream");
-						expect(result).toEqual(true);
+						expect(context.scan.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(context.size.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(context.mime.mock.calls[0][0].constructor.name).toEqual("PassThrough");
+						expect(result).toEqual({signature: false, size: 13, mimetype: "image/png", extension: "png"});
 						expect(context.metadata.transactionsCount).toEqual(1);
 					});
 				});
